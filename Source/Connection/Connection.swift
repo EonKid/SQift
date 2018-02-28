@@ -22,6 +22,8 @@ public class Connection {
 
     // MARK: - Properties
 
+    public let tableLockPolicy: TableLockErrorPolicy
+
     /// Returns the fileName of the database connection.
     /// For more details, please refer to the [documentation](https://www.sqlite.org/c3ref/db_filename.html).
     public var fileName: String { return String(cString: sqlite3_db_filename(handle, nil)) }
@@ -71,6 +73,7 @@ public class Connection {
     /// - Throws: A `SQLiteError` if SQLite encounters an error when opening the database connection.
     public convenience init(
         storageLocation: StorageLocation = .inMemory,
+        tableLockPolicy: TableLockErrorPolicy = .default,
         readOnly: Bool = false,
         multiThreaded: Bool = true,
         sharedCache: Bool = false)
@@ -82,7 +85,7 @@ public class Connection {
         flags |= multiThreaded ? SQLITE_OPEN_NOMUTEX : SQLITE_OPEN_FULLMUTEX
         flags |= sharedCache ? SQLITE_OPEN_SHAREDCACHE : SQLITE_OPEN_PRIVATECACHE
 
-        try self.init(storageLocation: storageLocation, flags: flags)
+        try self.init(storageLocation: storageLocation, tableLockPolicy: tableLockPolicy, flags: flags)
     }
 
     /// Creates the database `Connection` with the specified storage location and initialization flags.
@@ -94,11 +97,18 @@ public class Connection {
     ///   - flags:           The bitmask flags to use when initializing the connection.
     ///
     /// - Throws: A `SQLiteError` if SQLite encounters an error when opening the database connection.
-    public init(storageLocation: StorageLocation, flags: Int32) throws {
+    public init(
+        storageLocation: StorageLocation,
+        tableLockPolicy: TableLockErrorPolicy = .default,
+        flags: Int32)
+        throws
+    {
+        self.tableLockPolicy = tableLockPolicy
+
         var tempHandle: OpaquePointer?
         try check(sqlite3_open_v2(storageLocation.path, &tempHandle, flags, nil))
 
-        handle = tempHandle!
+        self.handle = tempHandle!
     }
 
     deinit {

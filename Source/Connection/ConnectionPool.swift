@@ -33,6 +33,7 @@ public class ConnectionPool {
     var busyConnections: Set<ConnectionQueue>
 
     let storageLocation: StorageLocation
+    let tableLockPolicy: TableLockErrorPolicy
     let flags: Int32
 
     // MARK: - Private - Properties
@@ -56,10 +57,12 @@ public class ConnectionPool {
     ///   - connectionPreparation: The closure executed when a new connection is created. `nil` by default.
     public init(
         storageLocation: StorageLocation,
+        tableLockPolicy: TableLockErrorPolicy = .default,
         availableConnectionDrainDelay drainDelay: TimeInterval = 1.0,
         connectionPreparation: ((Connection) throws -> Void)? = nil)
     {
         self.storageLocation = storageLocation
+        self.tableLockPolicy = tableLockPolicy
         self.drainDelay = drainDelay
         self.drainInProgress = false
         self.connectionPreparation = connectionPreparation
@@ -108,7 +111,14 @@ public class ConnectionPool {
         if !availableConnections.isEmpty {
             connectionQueue = availableConnections.removeFirst()
         } else {
-            connectionQueue = try ConnectionQueue(connection: Connection(storageLocation: storageLocation, flags: flags))
+            let connection = try Connection(
+                storageLocation: storageLocation,
+                tableLockPolicy: tableLockPolicy,
+                flags: flags
+            )
+
+            connectionQueue = ConnectionQueue(connection: connection)
+
             try connectionPreparation?(connectionQueue.connection)
         }
 

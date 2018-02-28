@@ -41,6 +41,7 @@ public class Database {
     /// - Throws: A `SQLiteError` if SQLite encounters an error opening the writable connection.
     public init(
         storageLocation: StorageLocation = .inMemory,
+        tableLockPolicy: TableLockErrorPolicy = .default,
         multiThreaded: Bool = true,
         sharedCache: Bool = false,
         drainDelay: TimeInterval = 1.0,
@@ -50,6 +51,7 @@ public class Database {
     {
         let writerConnection = try Connection(
             storageLocation: storageLocation,
+            tableLockPolicy: tableLockPolicy,
             readOnly: false,
             multiThreaded: multiThreaded,
             sharedCache: sharedCache
@@ -61,6 +63,7 @@ public class Database {
 
         readerConnectionPool = ConnectionPool(
             storageLocation: storageLocation,
+            tableLockPolicy: tableLockPolicy,
             availableConnectionDrainDelay: drainDelay,
             connectionPreparation: readerConnectionPreparation
         )
@@ -84,19 +87,26 @@ public class Database {
     /// - Throws: A `SQLiteError` if SQLite encounters an error opening the writable connection.
     public init(
         storageLocation: StorageLocation,
+        tableLockPolicy: TableLockErrorPolicy = .default,
         flags: Int32,
         drainDelay: TimeInterval = 1.0,
         writerConnectionPreparation: ((Connection) throws -> Void)? = nil,
         readerConnectionPreparation: ((Connection) throws -> Void)? = nil)
         throws
     {
-        let writerConnection = try Connection(storageLocation: storageLocation, flags: flags)
+        let writerConnection = try Connection(
+            storageLocation: storageLocation,
+            tableLockPolicy: tableLockPolicy,
+            flags: flags
+        )
+
         try writerConnectionPreparation?(writerConnection)
 
         writerConnectionQueue = ConnectionQueue(connection: writerConnection)
 
         readerConnectionPool = ConnectionPool(
             storageLocation: storageLocation,
+            tableLockPolicy: tableLockPolicy,
             availableConnectionDrainDelay: drainDelay,
             connectionPreparation: readerConnectionPreparation
         )
