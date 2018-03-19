@@ -128,7 +128,16 @@ public class Connection {
     ///
     /// - Throws: A `SQLiteError` if SQLite encounters and error when executing the SQL statement.
     public func execute(_ sql: SQL) throws {
-        try check(sqlite3_exec(handle, sql, nil, nil, nil))
+        var result = sqlite3_exec(handle, sql, nil, nil, nil)
+
+        if let delay = tableLockPolicy.delayInMicroseconds {
+            while result == SQLITE_LOCKED {
+                usleep(delay)
+                result = sqlite3_exec(handle, sql, nil, nil, nil)
+            }
+        }
+
+        try check(result)
     }
 
     /// Causes any active database operation to abort and return at its earliest opportunity.
